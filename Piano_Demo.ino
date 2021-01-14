@@ -4,9 +4,9 @@
 #include "LinkedList.h"
 #define PIN_PIANO 11
 #define BRIGHTNESS 6
-#define NUM_LEDS 8
-#define PIN_PIXELS 12
-#define NUMPIXELS 55
+#define NUM_LEDS 7
+#define PIN_PIXELS 13
+#define NUMPIXELS 56
 #define DELAYVAL 10
 
 #define WIDTH 7
@@ -15,9 +15,22 @@
 
 
 Adafruit_NeoPixel strip = Adafruit_NeoPixel(NUM_LEDS, PIN_PIANO, NEO_GRBW + NEO_KHZ800);
+// Adafruit_NeoPixel strip(NUM_LEDS, PIN_PIANO, NEO_GRB + NEO_KHZ800);
 U8GLIB_SSD1306_128X64 u8g(U8G_I2C_OPT_NONE);
 
 Adafruit_NeoPixel pixels(NUMPIXELS, PIN_PIXELS, NEO_GRB + NEO_KHZ800);
+
+const int notations[] = {
+  1, 1, 5, 5, 6, 6, 5,
+  4, 4, 3, 3, 2, 2, 1,
+  5, 5, 4, 4, 3, 3, 2,
+  5, 5, 4, 4, 3, 3, 2,
+  1, 1, 5, 5, 6, 6, 5,
+  4, 4, 3, 3, 2, 2, 1
+};
+LinkedList<int> tasks = LinkedList<int>();
+
+int isPracticing = 2;
 
 //const int lineColors[HEIGHT][3] = {
 //  {46, 68, 243},
@@ -42,15 +55,25 @@ Adafruit_NeoPixel pixels(NUMPIXELS, PIN_PIXELS, NEO_GRB + NEO_KHZ800);
 //};
 
 const int lineColors[HEIGHT][3] = {
-  {64, 59, 18},
-  {64, 45, 22},
-  {64, 15, 24},
-  {61, 11, 64},
-  {52, 43, 64},
-  {23, 64, 63},
+  {64, 79, 8},
+  {64, 55, 12},
+  {74, 15, 24},
+  {99, 11, 54},
+  {90, 43, 54},
+  {23, 74, 63},
   {18, 37, 64},
-  {11, 17, 61}
+  {11, 17, 91}
 };
+
+  const int pianoColors[7][3] = {
+    {255, 0, 0},
+    {255, 60, 0},
+    {255, 200, 0},
+    {0, 255, 0},
+    {0, 255, 255},
+    {0, 0, 255},
+    {255, 0, 255}
+  };
 
 LinkedList<int> records = LinkedList<int>();
 int lastIndex = -1;
@@ -62,12 +85,6 @@ void setup() {
 
   pixels.begin();
   pixels.setBrightness(36);
-//  for ( int i = 0; i < HEIGHT; i++ )
-//  {
-//    for (int j = 0; j < WIDTH; j++) {
-//      pixels.setPixelColor((i + 1) * (j + 1) - 1, pixels.Color(lineColors[i][0], lineColors[i][1], lineColors[i][2]));
-//    }
-//  }
 
   for(int i = 0; i < 8; i++){
     records.add(-1);
@@ -84,6 +101,7 @@ void setup() {
   pinMode(7, INPUT);
   pinMode(8, INPUT);
   pinMode(9, INPUT);
+  pinMode(12, INPUT);
   u8g.setFont(u8g_font_osb18);
   u8g.setFontRefHeightText();
   u8g.setFontPosTop();
@@ -92,18 +110,15 @@ void setup() {
     u8g.setPrintPos(0, 0);
     u8g.print("Piano");
   } while ( u8g.nextPage() );
+
+  Serial.begin(9600);
+
+  if(isPracticing == 2){
+    initializeTasks();
+  }
 }
 
 void loop() {
-  const int pianoColors[7][3] = {
-    {255, 0, 0},
-    {255, 60, 0},
-    {255, 200, 0},
-    {0, 255, 0},
-    {0, 255, 255},
-    {0, 0, 255},
-    {255, 0, 255}
-  };
 
   const String pitches[] = {
     "C", "D", "E", "F", "G" , "A", "B"
@@ -113,7 +128,24 @@ void loop() {
     NOTE_C5, NOTE_D5, NOTE_E5, NOTE_F5, NOTE_G5, NOTE_A5, NOTE_B5
   };
 
-
+  if(digitalRead(12)==1){
+    if(isPracticing == 2){
+      isPracticing = 3;
+    }else{
+      isPracticing = 2;
+    }
+    Serial.println(isPracticing);
+    pixels.clear();
+    strip.clear();
+    if(isPracticing == 2){
+      initializeTasks();
+    }else{
+      records = LinkedList<int>();
+      for(int i = 0; i < 8; i++){
+        records.add(-1);
+      }
+    }
+  }
 
   int index = -1;
   for (int i = 0; i < 7; i++) {
@@ -123,19 +155,23 @@ void loop() {
   }
 
   if(index >= 0){
-    // strip.setPixelColor(strip.Color(pianoColors[index][0], pianoColors[index][1], pianoColors[index][2], 0));
-    colorWipe(strip.Color(pianoColors[index][0], pianoColors[index][1], pianoColors[index][2], 0), 0);
+    // Serial.println(index);
+    // colorWipe(strip.Color(pianoColors[index][0], pianoColors[index][1], pianoColors[index][2], 0), 0);
     u8g.firstPage();
     do {
-      u8g.setPrintPos(0, 45);
-      u8g.print(pitches[index]);
+       u8g.setPrintPos(18*index, 45);
+       u8g.print(pitches[index]);
     } while ( u8g.nextPage() );
     do {
       tone(10, pitchValues[index], 50);
     }
     while (digitalRead(8 - index) == 1);
 
-    update(index);
+    if(isPracticing == 2){
+      updateTasks(index);
+    }else{
+      update(index);
+    }
   }
   
 }
@@ -149,6 +185,9 @@ void colorWipe(uint32_t c, uint8_t wait) {
 }
 
 void update(int index) {
+  strip.clear();
+  strip.setPixelColor(index, strip.Color(pianoColors[index][0], pianoColors[index][1], pianoColors[index][2]));
+  strip.show();
   pixels.clear();
   records.add(index);
   if (records.size() > 8) {
@@ -162,4 +201,90 @@ void update(int index) {
   }
   pixels.show();
 
+}
+
+void initializeTasks(){
+  tasks = LinkedList<int>();
+  for(int i = 0; i < 8; i++){
+    tasks.add(0); 
+  }
+  for(int i = 0; i < sizeof(notations)/2; i++){
+    tasks.add(notations[i]);
+  }
+  updateTasks(-1);
+  for(int i = 0; i < 7; i++){
+    updateTasks(-1);
+    delay(500);
+  }
+}
+
+void updateTasks(int index){
+    if(tasks.size() > 0 && index == tasks.get(0)-1){
+      tasks.shift();
+      
+      int nextIndex = tasks.get(0)-1;
+      strip.clear();
+      strip.setPixelColor(nextIndex, strip.Color(pianoColors[nextIndex][0], pianoColors[nextIndex][1], pianoColors[nextIndex][2]));
+      strip.show();
+      
+      pixels.clear();
+      for (int i = 0; i < 8; i++) {
+        int value = tasks.get(i)-1;
+
+        if(value >= 0){
+          pixels.setPixelColor(value * HEIGHT + i, pixels.Color(lineColors[i][0], lineColors[i][1], lineColors[i][2]));
+        }
+      }
+      pixels.show();
+     
+    } 
+    if(tasks.size()==0){
+      showHeart();  
+    }
+}
+
+void showHeart(){
+  int Rnum=40;
+  int Gnum=0;
+  int Bnum=20;
+  pixels.setPixelColor(15, pixels.Color(Rnum, Gnum, Bnum));
+  pixels.setPixelColor(23, pixels.Color(Rnum, Gnum, Bnum));
+  pixels.setPixelColor(39, pixels.Color(Rnum, Gnum, Bnum));
+  pixels.setPixelColor(47, pixels.Color(Rnum, Gnum, Bnum));
+  pixels.setPixelColor(6, pixels.Color(Rnum, Gnum, Bnum));
+  pixels.setPixelColor(14, pixels.Color(Rnum, Gnum, Bnum));
+  pixels.setPixelColor(22, pixels.Color(Rnum, Gnum, Bnum));
+  pixels.setPixelColor(30, pixels.Color(Rnum, Gnum, Bnum));
+  pixels.setPixelColor(38, pixels.Color(Rnum, Gnum, Bnum));
+  pixels.setPixelColor(46, pixels.Color(Rnum, Gnum, Bnum));
+  pixels.setPixelColor(54, pixels.Color(Rnum, Gnum, Bnum));
+  pixels.setPixelColor(5, pixels.Color(Rnum, Gnum, Bnum));
+  pixels.setPixelColor(13, pixels.Color(Rnum, Gnum, Bnum));
+  pixels.setPixelColor(21, pixels.Color(Rnum, Gnum, Bnum));
+  pixels.setPixelColor(29, pixels.Color(Rnum, Gnum, Bnum));
+  pixels.setPixelColor(37, pixels.Color(Rnum, Gnum, Bnum));
+  pixels.setPixelColor(45, pixels.Color(Rnum, Gnum, Bnum));
+  pixels.setPixelColor(53, pixels.Color(Rnum, Gnum, Bnum));
+  pixels.setPixelColor(4, pixels.Color(Rnum, Gnum, Bnum));
+  pixels.setPixelColor(12, pixels.Color(Rnum, Gnum, Bnum));
+  pixels.setPixelColor(20, pixels.Color(Rnum, Gnum, Bnum));
+  pixels.setPixelColor(28, pixels.Color(Rnum, Gnum, Bnum));
+  pixels.setPixelColor(36, pixels.Color(Rnum, Gnum, Bnum));
+  pixels.setPixelColor(44, pixels.Color(Rnum, Gnum, Bnum));
+  pixels.setPixelColor(52, pixels.Color(Rnum, Gnum, Bnum));
+  pixels.setPixelColor(11, pixels.Color(Rnum, Gnum, Bnum));
+  pixels.setPixelColor(19, pixels.Color(Rnum, Gnum, Bnum));
+  pixels.setPixelColor(27, pixels.Color(Rnum, Gnum, Bnum));
+  pixels.setPixelColor(35, pixels.Color(Rnum, Gnum, Bnum));
+  pixels.setPixelColor(43, pixels.Color(Rnum, Gnum, Bnum));
+  pixels.setPixelColor(10, pixels.Color(Rnum, Gnum, Bnum));
+  pixels.setPixelColor(18, pixels.Color(Rnum, Gnum, Bnum));
+  pixels.setPixelColor(26, pixels.Color(Rnum, Gnum, Bnum));
+  pixels.setPixelColor(34, pixels.Color(Rnum, Gnum, Bnum));
+  pixels.setPixelColor(42, pixels.Color(Rnum, Gnum, Bnum));
+  pixels.setPixelColor(17, pixels.Color(Rnum, Gnum, Bnum));
+  pixels.setPixelColor(25, pixels.Color(Rnum, Gnum, Bnum));
+  pixels.setPixelColor(33, pixels.Color(Rnum, Gnum, Bnum));
+  pixels.setPixelColor(24, pixels.Color(Rnum, Gnum, Bnum));
+  pixels.show();
 }
