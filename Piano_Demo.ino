@@ -101,7 +101,7 @@ void setup() {
   pinMode(7, INPUT);
   pinMode(8, INPUT);
   pinMode(9, INPUT);
-  pinMode(12, INPUT);
+  // pinMode(12, INPUT);
   u8g.setFont(u8g_font_osb18);
   u8g.setFontRefHeightText();
   u8g.setFontPosTop();
@@ -128,7 +128,7 @@ void loop() {
     NOTE_C5, NOTE_D5, NOTE_E5, NOTE_F5, NOTE_G5, NOTE_A5, NOTE_B5
   };
 
-  if(digitalRead(12)==1){
+  if(digitalRead(9)==1){
     if(isPracticing == 2){
       isPracticing = 3;
     }else{
