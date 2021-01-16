@@ -30,7 +30,7 @@ const int notations[] = {
 };
 LinkedList<int> tasks = LinkedList<int>();
 
-int isPracticing = 2;
+bool isPracticing = false;
 
 //const int lineColors[HEIGHT][3] = {
 //  {46, 68, 243},
@@ -113,7 +113,7 @@ void setup() {
 
   Serial.begin(9600);
 
-  if(isPracticing == 2){
+  if(isPracticing){
     initializeTasks();
   }
 }
@@ -129,15 +129,10 @@ void loop() {
   };
 
   if(digitalRead(9)==1){
-    if(isPracticing == 2){
-      isPracticing = 3;
-    }else{
-      isPracticing = 2;
-    }
-    Serial.println(isPracticing);
+    isPracticing = !isPracticing;
     pixels.clear();
     strip.clear();
-    if(isPracticing == 2){
+    if(isPracticing){
       initializeTasks();
     }else{
       records = LinkedList<int>();
@@ -167,7 +162,7 @@ void loop() {
     }
     while (digitalRead(8 - index) == 1);
 
-    if(isPracticing == 2){
+    if(isPracticing){
       updateTasks(index);
     }else{
       update(index);
